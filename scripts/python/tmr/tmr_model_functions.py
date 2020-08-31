@@ -4,8 +4,8 @@ Created on Mon Aug 31 07:54:42 2020
 
 @author: Peng
 """
-
-cluster_dataframe_path='data/cluster_dataframes'
+import pandas as pd
+cluster_dataframe_path='data/cluster_dataframes/'
 
 def aa_one_hot(seqs):
 # =============================================================================
@@ -75,9 +75,15 @@ def load_seq_dataframe(dir_path):
 
 
 seq_df=load_seq_dataframe(cluster_dataframe_path)
+seq_cluster=seq_df.loc[seq_df['Cluster'] > -1]
+train=seq_cluster.groupby(['Cluster','annotation']).sample(2)
+train_one_hot=aa_one_hot(train['sequence'])
 
-one_hot_swiss=aa_one_hot(seq_df['sequence'])
 
-print('here')
+
+
+
+
+
 
     
