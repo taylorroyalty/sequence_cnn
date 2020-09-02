@@ -11,7 +11,7 @@ import sys
 sys.path.insert(1,'scripts/python/tmr/')
 cluster_dataframe_path='data/cluster_dataframes/'
 
-from model_templates_tmr import aa_mask_blstm
+from model_templates_tmr import aa_mask_blstm, original_blstm
 
 is_dna_data=False
 
@@ -102,10 +102,10 @@ mask_length = None
 
 embed_size = 256
 # model_name = 'testing'
-model_template = aa_mask_blstm
+model_template = original_blstm
 model = model_template(num_classes, num_letters, sequence_length, embed_size=embed_size)
 
-ydata=np.array(seq_cluster.ydata,dtype='uint8')
+ydata=np.array(train.ydata,dtype='uint8')
 model.fit(x=train_one_hot,y=ydata)
 
 

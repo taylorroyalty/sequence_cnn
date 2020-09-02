@@ -24,6 +24,20 @@ def aa_mask_blstm(num_classes, num_letters, sequence_length, embed_size=256):
     model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=0.001), metrics=['accuracy'])
     return model
 
+def original_blstm(num_classes, num_letters, sequence_length, embed_size=50):
+    model = Sequential()
+    model.add(Conv1D(input_shape=(sequence_length, num_letters), filters=320, kernel_size=26, padding="valid", activation="relu"))
+    model.add(MaxPooling1D(pool_length=13, stride=13))
+    model.add(Dropout(0.2))
+    model.add(Bidirectional(LSTM(320, activation="tanh", return_sequences=True)))
+    model.add(Dropout(0.5))
+    #model.add(LSTM(num_classes, activation="softmax", name="AV"))
+    model.add(LSTM(embed_size, activation="tanh"))
+    model.add(Dense(num_classes, activation=None, name="AV"))
+    model.add(Activation("softmax"))
+    model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=0.001), metrics=['accuracy'])
+    return model
+
 def dspace(num_classes, num_letters, sequence_length, embed_size=256):
     model = Sequential()
     model.add(Conv1D(input_shape=(sequence_length, num_letters), filters=26, kernel_size=3, strides=3, padding="valid", activation="elu", name='dna2aa', kernel_initializer='he_uniform'))
