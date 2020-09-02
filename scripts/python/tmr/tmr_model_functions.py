@@ -5,6 +5,7 @@ Created on Mon Aug 31 07:54:42 2020
 @author: Peng
 """
 import pandas as pd
+import numpy as np
 import sys
 
 sys.path.insert(1,'scripts/python/tmr/')
@@ -82,11 +83,19 @@ def load_seq_dataframe(dir_path):
 
 
 seq_df=load_seq_dataframe(cluster_dataframe_path)
+
+uniq_anno=seq_df.annotation.unique()
+num_classes=len(uniq_anno)
+annotation_ydata_df=pd.DataFrame({'ydata': range(num_classes),'annotation': uniq_anno})
+seq_df=pd.merge(seq_df,annotation_ydata_df,on='annotation')
 seq_cluster=seq_df.loc[seq_df['Cluster'] > -1]
 train=seq_cluster.groupby(['Cluster','annotation']).sample(2)
+
+
 train_one_hot=aa_one_hot(train['sequence'])
 
-num_classes=len(train.annotation.unique())
+
+
 num_letters = 4 if is_dna_data else 26
 sequence_length = train_one_hot.shape[1]
 mask_length = None
@@ -96,8 +105,8 @@ embed_size = 256
 model_template = aa_mask_blstm
 model = model_template(num_classes, num_letters, sequence_length, embed_size=embed_size)
 
-
-
+ydata=np.array(seq_cluster.ydata,dtype='uint8')
+model.fit(x=train_one_hot,y=ydata)
 
 
 
