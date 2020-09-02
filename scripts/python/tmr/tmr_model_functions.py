@@ -89,6 +89,7 @@ def original_blstm(num_classes, num_letters, sequence_length, embed_size=50):
     model = Sequential()
     model.add(Conv1D(input_shape=(sequence_length, num_letters), filters=320, kernel_size=26, padding="valid", activation="relu"))
     model.add(MaxPooling1D(pool_size=13, strides=13))
+    model.add(Masking(mask_value=0))
     model.add(Dropout(0.2))
     model.add(Bidirectional(LSTM(320, activation="tanh", return_sequences=True)))
     model.add(Dropout(0.5))
@@ -106,11 +107,14 @@ num_classes=len(uniq_anno)
 annotation_ydata_df=pd.DataFrame({'ydata': range(num_classes),'annotation': uniq_anno})
 seq_df=pd.merge(seq_df,annotation_ydata_df,on='annotation')
 seq_cluster=seq_df.loc[seq_df['Cluster'] > -1]
-train=seq_cluster.groupby(['annotation']).sample(1)
-
+train=seq_cluster.groupby(['annotation']).sample(10)
+test=seq_cluster.groupby(['annotation']).sample(10)
+validation=seq_cluster.groupby(['annotation']).sample(10)
 
 
 train_one_hot=aa_one_hot(train['sequence'])
+test_one_hot=aa_one_hot(test['sequence'])
+validation_one_hot=aa_one_hot(validation['sequence'])
 
 
 
@@ -123,8 +127,11 @@ embed_size = 256
 # model_template = original_blstm
 model = original_blstm(num_classes, num_letters, sequence_length, embed_size=embed_size)
 
-ydata=to_categorical(np.array(train.ydata,dtype='uint8'),num_classes)
-model.train_on_batch(x=train_one_hot,y=ydata)
+ytrain=to_categorical(np.array(train.ydata,dtype='uint8'),num_classes)
+ytest=to_categorical(np.array(test.ydata,dtype='uint8'),num_classes)
+yvalidation=to_categorical(np.array(validation.ydata,dtype='uint8'),num_classes)
+model.fit(x=train_one_hot,y=ytrain,batch_size=100,epochs=500,validation_data=(validation_one_hot,yvalidation))
+model.evaluate(test_one_hot,ytest)
 
 
 
