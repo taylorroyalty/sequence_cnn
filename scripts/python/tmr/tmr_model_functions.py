@@ -5,7 +5,14 @@ Created on Mon Aug 31 07:54:42 2020
 @author: Peng
 """
 import pandas as pd
+import sys
+
+sys.path.insert(1,'scripts/python/tmr/')
 cluster_dataframe_path='data/cluster_dataframes/'
+
+from model_templates_tmr import aa_mask_blstm
+
+is_dna_data=False
 
 def aa_one_hot(seqs):
 # =============================================================================
@@ -47,7 +54,7 @@ def aa_one_hot(seqs):
     n=[len(seq) for seq in seqs]
     #pre-define matrix based on length and number of sequences; pad 0s on end
     #of sequences shorter than maximum length sequence
-    one_hot_matrix=np.zeros(shape=(len(seqs),max(n),26),dtype='uint8')    
+    one_hot_matrix=np.zeros(shape=(len(seqs),max(n),26),dtype='float')    
     
     #indexing one_hot samples and timeseries (i.e., aa position)
     #feature index is retrieved with dictionary
@@ -79,6 +86,15 @@ seq_cluster=seq_df.loc[seq_df['Cluster'] > -1]
 train=seq_cluster.groupby(['Cluster','annotation']).sample(2)
 train_one_hot=aa_one_hot(train['sequence'])
 
+num_classes=len(train.annotation.unique())
+num_letters = 4 if is_dna_data else 26
+sequence_length = train_one_hot.shape[1]
+mask_length = None
+
+embed_size = 256
+# model_name = 'testing'
+model_template = aa_mask_blstm
+model = model_template(num_classes, num_letters, sequence_length, embed_size=embed_size)
 
 
 
