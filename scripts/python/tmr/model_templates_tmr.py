@@ -27,7 +27,7 @@ def aa_mask_blstm(num_classes, num_letters, sequence_length, embed_size=256):
 def original_blstm(num_classes, num_letters, sequence_length, embed_size=50):
     model = Sequential()
     model.add(Conv1D(input_shape=(sequence_length, num_letters), filters=320, kernel_size=26, padding="valid", activation="relu"))
-    model.add(MaxPooling1D(pool_length=13, stride=13))
+    model.add(MaxPooling1D(pool_size=13, strides=13))
     model.add(Dropout(0.2))
     model.add(Bidirectional(LSTM(320, activation="tanh", return_sequences=True)))
     model.add(Dropout(0.5))
