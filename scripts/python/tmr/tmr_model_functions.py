@@ -6,25 +6,26 @@ Created on Mon Aug 31 07:54:42 2020
 """
 import pandas as pd
 import numpy as np
+# from model_templates_tmr import original_blstm
+from keras.utils import to_categorical
 
-from keras.models import Model, Sequential, load_model
-from keras.layers import LSTM, Masking, Dense,  Bidirectional, Dropout, MaxPooling1D, Conv1D, Activation, Flatten, Input, Multiply
-from keras.layers.normalization import BatchNormalization
-from keras.optimizers import Adam, Nadam
 # import sys
 
 # sys.path.insert(1,'scripts/python/tmr/')
 cluster_dataframe_path='data/cluster_dataframes/'
+model_save_path='data/models/'
 
-# from model_templates_tmr import original_blstm
-from keras.utils import to_categorical
+max_len=5000
+train_n=20
 is_dna_data=False
+mask_length = None
+embed_size = 256
 
-def aa_one_hot(seqs):
+def aa_one_hot(seqs,max_len=None):
 # =============================================================================
 # one-hot encodes amino acid sequences. Sequences shorter than the longest sequence are 
-# paded with 0's for all amino acid feature. Functionality in the future will include a nucleotide
-# option as well as an abilit to truncate sequences to a specified length.
+# paded with 0's for all amino acid features. Functionality in the future will include a nucleotide
+# option.
 # -seqs-- a list where each element is an amino acid string
 # =============================================================================
     import numpy as np
@@ -57,10 +58,13 @@ def aa_one_hot(seqs):
               "O": 25}
     
     #find maximum length sequence
-    n=[len(seq) for seq in seqs]
+    if max_len == None:
+        n=[len(seq) for seq in seqs]
+        max_len = max(n)
+    
     #pre-define matrix based on length and number of sequences; pad 0s on end
     #of sequences shorter than maximum length sequence
-    one_hot_matrix=np.zeros(shape=(len(seqs),max(n),26),dtype='uint8')    
+    one_hot_matrix=np.zeros(shape=(len(seqs),max_len,26),dtype='uint8')    
     
     #indexing one_hot samples and timeseries (i.e., aa position)
     #feature index is retrieved with dictionary
@@ -70,7 +74,8 @@ def aa_one_hot(seqs):
         for aa in seq:
             a=aa_dict[aa]
             one_hot_matrix[i,j,a]=1
-            j+=1    
+            j+=1
+            if j == max_len+1: break 
         i+=1
     return one_hot_matrix
         
@@ -86,6 +91,11 @@ def load_seq_dataframe(dir_path):
     return seq_df
 
 def original_blstm(num_classes, num_letters, sequence_length, embed_size=50):
+    from keras.models import Sequential
+    from keras.layers import LSTM, Masking, Dense,  Bidirectional, Dropout, MaxPooling1D, Conv1D, Activation
+    # from keras.layers.normalization import BatchNormalization
+    from keras.optimizers import Adam#, Nadam
+    
     model = Sequential()
     model.add(Conv1D(input_shape=(sequence_length, num_letters), filters=320, kernel_size=26, padding="valid", activation="relu"))
     model.add(MaxPooling1D(pool_size=13, strides=13))
@@ -107,33 +117,59 @@ num_classes=len(uniq_anno)
 annotation_ydata_df=pd.DataFrame({'ydata': range(num_classes),'annotation': uniq_anno})
 seq_df=pd.merge(seq_df,annotation_ydata_df,on='annotation')
 seq_cluster=seq_df.loc[seq_df['Cluster'] > -1]
-train=seq_cluster.groupby(['annotation']).sample(10)
-test=seq_cluster.groupby(['annotation']).sample(10)
-validation=seq_cluster.groupby(['annotation']).sample(10)
+seq_cluster_noise=seq_df.loc[seq_df['Cluster'] == -1]
 
+#no cluster sampling
+train=seq_df.groupby(['annotation']).sample(train_n)
+seq_df=seq_df.drop(train.index)
+validation=seq_df.groupby(['annotation']).sample(train_n)
+seq_df=seq_df.drop(validation.index)
+test=seq_df
 
-train_one_hot=aa_one_hot(train['sequence'])
-test_one_hot=aa_one_hot(test['sequence'])
-validation_one_hot=aa_one_hot(validation['sequence'])
-
-
+train_one_hot=aa_one_hot(train['sequence'],max_len=max_len)
+validation_one_hot=aa_one_hot(validation['sequence'],max_len=max_len)
+test_one_hot=aa_one_hot(test['sequence'],max_len=max_len)
 
 num_letters = 4 if is_dna_data else 26
 sequence_length = train_one_hot.shape[1]
-mask_length = None
-
-embed_size = 256
-# model_name = 'testing'
-# model_template = original_blstm
 model = original_blstm(num_classes, num_letters, sequence_length, embed_size=embed_size)
 
+
+##fit model
 ytrain=to_categorical(np.array(train.ydata,dtype='uint8'),num_classes)
-ytest=to_categorical(np.array(test.ydata,dtype='uint8'),num_classes)
 yvalidation=to_categorical(np.array(validation.ydata,dtype='uint8'),num_classes)
+ytest=to_categorical(np.array(test.ydata,dtype='uint8'),num_classes)
 model.fit(x=train_one_hot,y=ytrain,batch_size=100,epochs=500,validation_data=(validation_one_hot,yvalidation))
 model.evaluate(test_one_hot,ytest)
 
+model.save(model_save_path + 'swiss100_annotation_only.h5')
 
+#cluster sampling
+train=seq_cluster.groupby(['annotation','Cluster']).sample(5)
+seq_cluster=seq_cluster.drop(train.index)
+validation=seq_cluster.groupby(['annotation','Cluster']).sample(5)
+seq_cluster=seq_cluster.drop(validation.index)
+test=seq_cluster
 
+train_one_hot=aa_one_hot(train['sequence'],max_len=max_len)
+validation_one_hot=aa_one_hot(validation['sequence'],max_len=max_len)
+test_one_hot=aa_one_hot(test['sequence'],max_len=max_len)
+test_noise_one_hot=aa_one_hot(seq_cluster_noise['sequence'],max_len=max_len)
+
+num_letters = 4 if is_dna_data else 26
+sequence_length = train_one_hot.shape[1]
+model = original_blstm(num_classes, num_letters, max_len, embed_size=embed_size)
+
+##fit model
+ytrain=to_categorical(np.array(train.ydata,dtype='uint8'),num_classes)
+yvalidation=to_categorical(np.array(validation.ydata,dtype='uint8'),num_classes)
+ytest=to_categorical(np.array(test.ydata,dtype='uint8'),num_classes)
+ytest_noise=to_categorical(np.array(seq_cluster_noise.ydata,dtype='uint8'),num_classes)
+
+model.fit(x=train_one_hot,y=ytrain,batch_size=100,epochs=500,validation_data=(validation_one_hot,yvalidation))
+model.evaluate(test_one_hot,ytest)
+model.evaluate(test_noise_one_hot,ytest_noise)
+
+model.save(model_save_path + 'swiss100_annotation_clusters.h5')
 
     
