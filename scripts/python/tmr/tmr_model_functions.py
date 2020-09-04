@@ -20,6 +20,7 @@ from keras.utils import to_categorical
 cluster_dataframe_path='data/cluster_dataframes/'
 model_save_path='data/models/'
 
+magn=20
 max_len=100
 sample_frac=0.1
 is_dna_data=False
@@ -130,12 +131,16 @@ annotation_ydata_df=pd.DataFrame({'ydata': range(num_classes),'annotation': uniq
 seq_df=pd.merge(seq_df,annotation_ydata_df,on='annotation')
 seq_cluster=seq_df.loc[seq_df['Cluster'] > -1]
 seq_cluster_noise=seq_df.loc[seq_df['Cluster'] == -1]
+seq_cluster_a=seq_cluster
 
 #%%
 #generate training data for annotation/cluster datasets
 ##annotations
-train_a=seq_df.groupby(['annotation']).sample(frac=sample_frac)
-seq_df=seq_df.drop(train_a.index)
+# train_a=seq_df.groupby(['annotation']).sample(frac=sample_frac)
+# seq_df=seq_df.drop(train_a.index)
+# train_a_one_hot=aa_one_hot(train_a['sequence'],max_len=max_len)
+train_a=seq_cluster_a.groupby(['annotation']).sample(frac=sample_frac)
+seq_cluster_a=seq_cluster_a.drop(train_a.index)
 train_a_one_hot=aa_one_hot(train_a['sequence'],max_len=max_len)
 
 ##clusters
@@ -146,9 +151,13 @@ train_c_one_hot=aa_one_hot(train_c['sequence'],max_len=max_len)
 #%%
 #generate validation data for annotation/cluster datasets
 ##annotation
-validation_a=seq_df.groupby(['annotation']).sample(frac=sample_frac)
-seq_df=seq_df.drop(validation_a.index)
+# validation_a=seq_df.groupby(['annotation']).sample(frac=sample_frac)
+# seq_df=seq_df.drop(validation_a.index)
+# validation_a_one_hot=aa_one_hot(validation_a['sequence'],max_len=max_len)
+validation_a=seq_cluster_a.groupby(['annotation']).sample(frac=sample_frac)
+seq_cluster-a=seq_cluster_a.drop(validation_a.index)
 validation_a_one_hot=aa_one_hot(validation_a['sequence'],max_len=max_len)
+
 ##clusters
 validation_c=seq_cluster.groupby(['annotation','Cluster']).sample(frac=sample_frac)
 seq_cluster=seq_cluster.drop(validation_c.index)
@@ -156,7 +165,9 @@ validation_c_one_hot=aa_one_hot(validation_c['sequence'],max_len=max_len)
 
 #generate test data for annotation/cluster datasets
 ##annotation
-test_a=seq_df
+# test_a=seq_df
+# test_a_one_hot=aa_one_hot(test_a['sequence'],max_len=max_len)
+test_a=seq_cluster_a
 test_a_one_hot=aa_one_hot(test_a['sequence'],max_len=max_len)
 #clusters
 test_c=seq_cluster
@@ -187,10 +198,10 @@ n_validation_a=validation_a_one_hot.shape[0]
 n_validation_c=validation_c_one_hot.shape[0]
 
 model_a.fit(x=train_a_one_hot,y=ytrain_a,batch_size=batch_size,
-            validation_data=(validation_a_one_hot,yvalidation_a),validation_batch_size=n_validation_a,
+            validation_data=(validation_a_one_hot,yvalidation_a),validation_batch_size=magn*batch_size,
             epochs=epochs)
 model_c.fit(x=train_c_one_hot,y=ytrain_c,batch_size=batch_size,
-            validation_data=(validation_c_one_hot,yvalidation_c),validation_batch_size=n_validation_c,
+            validation_data=(validation_c_one_hot,yvalidation_c),validation_batch_size=magn*batch_size,
             epochs=epochs)
 
 
