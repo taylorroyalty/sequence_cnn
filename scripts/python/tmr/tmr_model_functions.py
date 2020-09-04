@@ -22,7 +22,7 @@ model_save_path='data/models/'
 
 magn=20
 max_len=100
-sample_frac=0.1
+sample_frac=0.2
 is_dna_data=False
 mask_length = None
 embed_size = 256
@@ -38,6 +38,7 @@ def aa_one_hot(seqs,max_len=None):
 # -seqs-- a list where each element is an amino acid string
 # =============================================================================
     import numpy as np
+    from tensorflow.image import resize
     #dictionary matching AA and feature index for one-hot encoded matrix
     aa_dict= {"A": 0,
               "C": 1,
@@ -73,18 +74,21 @@ def aa_one_hot(seqs,max_len=None):
     
     #pre-define matrix based on length and number of sequences; pad 0s on end
     #of sequences shorter than maximum length sequence
-    one_hot_matrix=np.zeros(shape=(len(seqs),max_len,26),dtype='uint8')    
+    one_hot_matrix=np.zeros(shape=(len(seqs),max_len,26),dtype='float')    
     
     #indexing one_hot samples and timeseries (i.e., aa position)
     #feature index is retrieved with dictionary
     i=0
     for seq in seqs:
         j=0
+        tmp_vector=np.zeros(shape=(1,len(seq),26,1))
         for aa in seq:
             a=aa_dict[aa]
-            one_hot_matrix[i,j,a]=1
+            tmp_vector[0,j,a,0]=1
+            # one_hot_matrix[i,j,a]=1
             j+=1
-            if j == max_len: break 
+            # if j == max_len: break
+        one_hot_matrix[i,:,:]=resize(tmp_vector,size=(max_len,26))[0,:,:,0].numpy()
         i+=1
     return one_hot_matrix
 
@@ -155,7 +159,7 @@ train_c_one_hot=aa_one_hot(train_c['sequence'],max_len=max_len)
 # seq_df=seq_df.drop(validation_a.index)
 # validation_a_one_hot=aa_one_hot(validation_a['sequence'],max_len=max_len)
 validation_a=seq_cluster_a.groupby(['annotation']).sample(frac=sample_frac)
-seq_cluster-a=seq_cluster_a.drop(validation_a.index)
+seq_cluster_a=seq_cluster_a.drop(validation_a.index)
 validation_a_one_hot=aa_one_hot(validation_a['sequence'],max_len=max_len)
 
 ##clusters
@@ -172,7 +176,7 @@ test_a_one_hot=aa_one_hot(test_a['sequence'],max_len=max_len)
 #clusters
 test_c=seq_cluster
 test_c_one_hot=aa_one_hot(test_c['sequence'],max_len=max_len)
-test_c_noise_one_hot=aa_one_hot(seq_cluster_noise['sequence'],max_len=max_len)
+test_noise_one_hot=aa_one_hot(seq_cluster_noise['sequence'],max_len=max_len)
 
 #%%
 ##generate y data for annotation/cluster datasets
@@ -184,7 +188,7 @@ ytest_a=to_categorical(np.array(test_a.ydata,dtype='uint8'),num_classes)
 ytrain_c=to_categorical(np.array(train_c.ydata,dtype='uint8'),num_classes)
 yvalidation_c=to_categorical(np.array(validation_c.ydata,dtype='uint8'),num_classes)
 ytest_c=to_categorical(np.array(test_c.ydata,dtype='uint8'),num_classes)
-ytest_c_noise=to_categorical(np.array(seq_cluster_noise.ydata,dtype='uint8'),num_classes)
+ytest_noise=to_categorical(np.array(seq_cluster_noise.ydata,dtype='uint8'),num_classes)
 
 num_letters = 4 if is_dna_data else 26
 # sequence_length = train_one_hot.shape[1]
@@ -210,7 +214,8 @@ model_c.save(model_save_path + 'swiss100_clusters.h5')
 
 model_a.evaluate(test_a_one_hot,ytest_a)
 model_c.evaluate(test_c_one_hot,ytest_c)
-model_c.evaluate(test_c_noise_one_hot,ytest_c_noise)
+model_a.evaluate(test_noise_one_hot,ytest_noise)
+model_c.evaluate(test_noise_one_hot,ytest_noise)
 
 # for i in range(epochs):
 #     #generate indices for building training batch datasets
