@@ -180,36 +180,55 @@ num_letters = 4 if is_dna_data else 26
 model_a= original_blstm(num_classes, num_letters, max_len, embed_size=embed_size)
 model_c= original_blstm(num_classes, num_letters, max_len, embed_size=embed_size)
 
-n_train_a=train_a_one_hot.shape[0]
-n_train_c=train_c_one_hot.shape[0]
-for i in range(epochs):
-    #generate indices for building training batch datasets
-    sample_train_a_index=random.sample(range(n_train_a),batch_size)
-    sample_train_c_index=random.sample(range(n_train_c),batch_size)
-    
-    #generate indices for building validation batch datasets
-    sample_validation_a_index=random.sample(range(n_train_a),batch_size)
-    sample_validation_c_index=random.sample(range(n_train_c),batch_size)
-    
-    #batch datasets
-    ##training
-    tmp_train_a_x=train_a_one_hot[sample_train_a_index,:,:]
-    tmp_train_a_y=ytrain_a[sample_train_a_index,:,:]
-    tmp_train_c_x=train_c_one_hot[sample_train_c_index,:,:]
-    tmp_train_c_y=ytrain_c[sample_train_c_index,:,:]
-    
-    ##validation
-    tmp_validation_a_x=validation_a_one_hot[sample_validation_a_index,:,:]
-    tmp_validation_a_y=yvalidation_a[sample_validation_a_index,:,:]
-    tmp_validation_c_x=validation_c_one_hot[sample_validation_c_index,:,:]
-    tmp_validation_c_y=yvalidation_c[sample_validation_c_index,:,:]
-    
-    #fit models with batch datasets
-    model_a.train_on_batch(tmp_train_a_x,tmp_train_a_y,validation_data=(tmp_validation_a_x,tmp_validation_a_y))
-    model_c.train_on_batch(tmp_train_c_x,tmp_train_c_y,validation_data=(tmp_validation_c_x,tmp_validation_c_y)) 
+# n_train_a=train_a_one_hot.shape[0]
+# n_train_c=train_c_one_hot.shape[0]
+
+n_validation_a=validation_a_one_hot.shape[0]
+n_validation_c=validation_c_one_hot.shape[0]
+
+model_a.fit(x=train_a_one_hot,y=ytrain_a,batch_size=batch_size,
+            validation_data=(validation_a_one_hot,yvalidation_a),validation_batch_size=n_validation_a,
+            epochs=epochs)
+model_c.fit(x=train_c_one_hot,y=ytrain_c,batch_size=batch_size,
+            validation_data=(validation_c_one_hot,yvalidation_c),validation_batch_size=n_validation_c,
+            epochs=epochs)
+
 
 model_a.save(model_save_path + 'swiss100_annotation_only.h5')
 model_c.save(model_save_path + 'swiss100_clusters.h5')
+
+model_a.evaluate(test_a_one_hot,ytest_a)
+model_c.evaluate(test_c_one_hot,ytest_c)
+model_c.evaluate(test_c_noise_one_hot,ytest_c_noise)
+
+# for i in range(epochs):
+#     #generate indices for building training batch datasets
+#     sample_train_a_index=random.sample(range(n_train_a),batch_size)
+#     sample_train_c_index=random.sample(range(n_train_c),batch_size)
+    
+#     #generate indices for building validation batch datasets
+#     sample_validation_a_index=random.sample(range(n_validation_a),batch_size)
+#     sample_validation_c_index=random.sample(range(n_validation_c),batch_size)
+    
+#     #batch datasets
+#     ##training
+#     tmp_train_a_x=train_a_one_hot[sample_train_a_index,:,:]
+#     tmp_train_a_y=ytrain_a[sample_train_a_index,:]
+#     tmp_train_c_x=train_c_one_hot[sample_train_c_index,:,:]
+#     tmp_train_c_y=ytrain_c[sample_train_c_index,:]
+    
+#     ##validation
+#     tmp_validation_a_x=validation_a_one_hot[sample_validation_a_index,:,:]
+#     tmp_validation_a_y=yvalidation_a[sample_validation_a_index,:]
+#     tmp_validation_c_x=validation_c_one_hot[sample_validation_c_index,:,:]
+#     tmp_validation_c_y=yvalidation_c[sample_validation_c_index,:]
+    
+#     #fit models with batch datasets
+#     model_a.train_on_batch(tmp_train_a_x,tmp_train_a_y,validation_data=(tmp_validation_a_x,tmp_validation_a_y))
+#     model_c.train_on_batch(tmp_train_c_x,tmp_train_c_y,validation_data=(tmp_validation_c_x,tmp_validation_c_y)) 
+
+
+
 
 # model.evaluate(test_one_hot,ytest)
 # model.evaluate(test_noise_one_hot,ytest_noise)
@@ -244,10 +263,10 @@ model_c.save(model_save_path + 'swiss100_clusters.h5')
 # ytest_noise=to_categorical(np.array(seq_cluster_noise.ydata,dtype='uint8'),num_classes)
 # =============================================================================
 
-# model.fit(x=train_one_hot,y=ytrain,batch_size=100,epochs=500,validation_data=(validation_one_hot,yvalidation))
-model.evaluate(test_one_hot,ytest)
-model.evaluate(test_noise_one_hot,ytest_noise)
+# # model.fit(x=train_one_hot,y=ytrain,batch_size=100,epochs=500,validation_data=(validation_one_hot,yvalidation))
+# model.evaluate(test_one_hot,ytest)
+# model.evaluate(test_noise_one_hot,ytest_noise)
 
-model.save(model_save_path + 'swiss100_annotation_clusters.h5')
+# model.save(model_save_path + 'swiss100_annotation_clusters.h5')
 
     
