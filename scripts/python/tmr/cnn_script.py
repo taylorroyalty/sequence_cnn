@@ -7,7 +7,7 @@ Created on Mon Aug 31 07:54:42 2020
 #%%
 # Libraries and modules
 import pandas as pd
-import random
+# import random
 import numpy as np
 # from model_templates_tmr import original_blstm
 from keras.utils import to_categorical
@@ -124,7 +124,7 @@ model_c.evaluate(test_c_one_hot,ytest_c)
 model_a.evaluate(test_noise_one_hot,ytest_noise)
 model_c.evaluate(test_noise_one_hot,ytest_noise)
 
-emb_data=pd.read_csv(emb_data_path,sep='\t').filter(lambda x: len(x)>9).reset_index(drop=True)
+emb_data=pd.read_csv(emb_data_path,sep='\t').groupby("annotation").filter(lambda x: len(x)>9).reset_index(drop=True)
 cf.tsne_non_trained_classes(model_a,emb_data,tnse_write_path,layer,max_len)
 
 # for i in range(epochs):
