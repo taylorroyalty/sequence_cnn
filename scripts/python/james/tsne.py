@@ -3,24 +3,25 @@ from keras.models import Model, load_model
 from load_data import get_onehot
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
-from load_data import load_csv, get_onehot
+import pandas as pd
+# from load_data import load_csv, get_onehot
 
-model_name = 'blstm_mask_dna_100class_4500'
-input_file = '/mnt/data/computervision/dna_100class_train80_val10_test10/test.csv'
+model_name = 'swiss100_annotation_clusters.h5'
+input_file = 'data/swiss_1_99.tsv'
 display_classes = 10
 n = 100
 
-is_dna_data = True
-seq_len = 4500
-mask_len = 113
+is_dna_data = False
+seq_len = 500
+# mask_len = 113
 
-model_file = '../models/'+model_name+'.h5'
+model_file = 'data/models/'+model_name
 model = load_model(model_file)
-embed_model = Model(inputs=model.input, outputs=model.get_layer("lstm_2").output)
+embed_model = Model(inputs=model.input, outputs=model.get_layer("lstm_3").output)
 embed_model.summary()
 
 counts = np.zeros(display_classes, dtype = np.int8)
-data = load_csv(input_file, divide=1)
+data = lo(input_file)
 chosen_data = []
 
 for (x, y) in data:
