@@ -25,6 +25,7 @@ batch_size=100
 epochs=50
 data_path='data/swiss_n100.tsv'
 cnn_fun_path='scripts/python/tmr/'
+seq_type='aa' #options include 'aa' (iupac), 'dna', 'rna', and 'dna_iupac'
 
 #libraries/modules
 from keras.utils import to_categorical
@@ -67,3 +68,5 @@ test_one_hot=cf.seq_one_hot(test_data['sequence'],max_len=max_len) #test
 ytrain_a=to_categorical(array(train_data.ydata,dtype='uint8'),num_classes) #training
 yvalidation_a=to_categorical(array(val_data.ydata,dtype='uint8'),num_classes) #validation
 ytest_a=to_categorical(array(test_data.ydata,dtype='uint8'),num_classes) #test
+
+
