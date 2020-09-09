@@ -141,7 +141,7 @@ def original_blstm(num_classes, num_letters, sequence_length, embed_size=50):
     model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=0.001), metrics=['accuracy'])
     return model
 #%%
-def dna_blstm(num_classes, num_letters, sequence_length, mask_length=None, embed_size=256):
+def dna_blstm(num_classes, num_letters, sequence_length, embed_size=256):
     from keras.models import Sequential
     from keras.layers import LSTM, Dense,  Bidirectional, Dropout, MaxPooling1D, Conv1D, Activation
     from keras.optimizers import Adam#, Nadam
