@@ -6,6 +6,7 @@ Created on Wed Sep  9 07:29:27 2020
 """
 
 # =============================================================================
+# sep -- the separator defining fields in the sample file
 # max_len -- length of sequences to be evaluated
 # sample_frac -- fraction of data allocated for training and validation datasets.
 #                the remaining data is allocated for test data
@@ -25,6 +26,7 @@ Created on Wed Sep  9 07:29:27 2020
 # =============================================================================
 
 #Input Variables
+sep='\t'
 max_len=1500
 sample_n=3
 embed_size = 256
@@ -49,7 +51,7 @@ import cnn_functions as cf
 import pandas as pd
 
 ##read in sequences as data.frame
-seq_df=pd.read_csv(data_path,sep='\t')
+seq_df=pd.read_csv(data_path,sep=sep)
 
 ##convert annotations into numerical categories for model response data (does not take characters)
 uniq_anno=seq_df.annotation.unique() #identify unique annotations
