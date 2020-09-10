@@ -161,21 +161,20 @@ def dna_blstm(num_classes, num_letters, sequence_length, embed_size=256):
 
 #%%
 
-def tsne_non_trained_classes(model,data,write_path,layer,max_len):
-        # import pandas as pd
+def tsne_non_trained_classes(model,data,write_path,layer,max_len,seq_type='aa',seq_resize=True):
+
         from keras.models import Model
         from sklearn.manifold import TSNE
-        # import matplotlib.pyplot as plt
         
         embed_model = Model(inputs=model.input, outputs=model.get_layer(layer).output)
         embed_model.summary()
         
-        new_seq=seq_one_hot(data['sequence'],max_len=max_len)
+        new_seq=seq_one_hot(data['sequence'],seq_type=seq_type,max_len=max_len,seq_resize=seq_resize)
         embed = embed_model.predict(new_seq, batch_size=100, verbose=1)
         tsne = TSNE(n_components=2, random_state=0)
         xx = tsne.fit_transform(embed)
         
-        data['comp1']=xx[0,:]
-        data['comp2']=xx[1,:]
+        data['comp1']=xx[:,0]
+        data['comp2']=xx[:,1]
         
-        data.to_csv(write_path)
+        data.to_csv(write_path,sep='\t')

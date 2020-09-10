@@ -17,17 +17,17 @@ import cnn_functions as cf
 #%%
 #Inputs
 layer="lstm_1"
-tnse_write_path='data/tnse_results/'
+tnse_write_path='data/tnse_results/test.tsv'
 emb_data_path='data/swiss_1_99.tsv'
 data_path='data/cluster_dataframes/'
 model_save_path='data/models/'
 
 #nn parameters
 max_len=1500
-sample_n=3
+sample_n=10
 embed_size = 256
 batch_size=100
-epochs=5
+epochs=100
 cnn_fun_path='scripts/python/tmr/'
 seq_type='aa'
 num_letters=26
