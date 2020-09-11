@@ -160,6 +160,27 @@ def dna_blstm(num_classes, num_letters, sequence_length, embed_size=256):
     return model
 
 #%%
+def aa_blstm(num_classes, num_letters, sequence_length, embed_size=50):
+    from keras.models import Sequential
+    from keras.layers import Embedding, LSTM, Masking, Dense,  Bidirectional, Dropout, MaxPooling1D, Conv1D, Activation
+    from keras.optimizers import Adam#, Nadam
+    
+    model = Sequential()
+    # model.add(Conv1D(input_shape=(sequence_length, num_letters), filters=100, kernel_size=26, padding="valid", activation="relu"))
+    # model.add(MaxPooling1D(pool_size=13, strides=13))
+    # model.add(Masking(mask_value=0))
+    # model.add(Dropout(0.2))
+    model.add(Embedding(num_letters,10000))
+    model.add(Bidirectional(LSTM(1000, activation="tanh", return_sequences=True)))
+    model.add(Dropout(0.5))
+    model.add(LSTM(embed_size, activation="tanh"))
+    model.add(Dense(num_classes, activation=None, name="AV"))
+    model.add(Activation("softmax"))
+    model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=0.001), metrics=['accuracy'])
+    return model
+
+#%%
+
 
 def tsne_non_trained_classes(model,data,write_path,layer,max_len,seq_type='aa',seq_resize=True):
 
