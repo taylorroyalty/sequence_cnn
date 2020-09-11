@@ -93,7 +93,7 @@ ytest=to_categorical(array(test_data.ydata,dtype='uint8'),num_classes) #test
 if seq_type == 'aa':
     #model for amino acids
     num_letters=26
-    model_blstm=cf.original_blstm(num_classes=num_classes,
+    model_blstm=cf.aa_blstm(num_classes=num_classes,
                                   num_letters=num_letters,
                                   sequence_length=max_len,
                                   embed_size=embed_size)
