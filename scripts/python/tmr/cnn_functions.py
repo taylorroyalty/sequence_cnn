@@ -160,9 +160,9 @@ def dna_blstm(num_classes, num_letters, sequence_length, embed_size=256):
     return model
 
 #%%
-def aa_blstm(num_classes, num_letters, sequence_length, embed_size=50):
+def aa_blstm(num_classes, num_letters, sequence_length, embed_size=5000):
     from keras.models import Sequential
-    from keras.layers import Embedding, LSTM, Masking, Dense,  Bidirectional, Dropout, MaxPooling1D, Conv1D, Activation
+    from keras.layers import SpatialDropout1D,Embedding, LSTM, Masking, Dense,  Bidirectional, Dropout, MaxPooling1D, Conv1D, Activation
     from keras.optimizers import Adam#, Nadam
     
     model = Sequential()
@@ -170,9 +170,10 @@ def aa_blstm(num_classes, num_letters, sequence_length, embed_size=50):
     # model.add(MaxPooling1D(pool_size=13, strides=13))
     # model.add(Masking(mask_value=0))
     # model.add(Dropout(0.2))
-    model.add(Embedding(num_letters,10000))
-    model.add(Bidirectional(LSTM(1000, activation="tanh", return_sequences=True)))
-    model.add(Dropout(0.5))
+    # model.add(Embedding(num_letters,10000))
+    # model.add(SpatialDropout1D(0.2))
+    model.add(Bidirectional(LSTM(5000, dropout=0.2, recurrent_dropout=0.2, activation="tanh", return_sequences=True)))
+    model.add(Dropout(0.2))
     model.add(LSTM(embed_size, activation="tanh"))
     model.add(Dense(num_classes, activation=None, name="AV"))
     model.add(Activation("softmax"))
