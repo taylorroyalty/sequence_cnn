@@ -38,13 +38,15 @@ seq_resize=True
 df_expriment=pd.DataFrame()
 #%%
 #generate datasets for fitting
-for r in replicates:
+for r in range(replicates):
     for f in fractions:
         seq_df=cf.load_seq_dataframe(data_path)
         uniq_anno=seq_df.annotation.unique()
         num_classes=len(uniq_anno)
         annotation_ydata_df=pd.DataFrame({'ydata': range(num_classes),'annotation': uniq_anno})
-        seq_df=pd.merge(seq_df,annotation_ydata_df,on='annotation').drop(['Component_1','Component_2','Cluster','id','annotation'],axis=1)
+        seq_df=pd.merge(seq_df,annotation_ydata_df,on='annotation')
+        seq_df=seq_df.loc[seq_df['Cluster'] > -1]
+        seq_df=seq_df.drop(['Component_1','Component_2','Cluster','id','annotation'],axis=1)
         
         seq_df_shuffle=cf.randomize_groups(seq_df,'ydata',f)
         
@@ -97,7 +99,7 @@ for r in replicates:
                     epochs=epochs)
         
         
-        model_a.save(model_save_path + str(r) + '_' + str(f) + '_' + basename + '.h5')
+        model_a.save(model_save_path + basename + '_' + str(r) + '_' + str(f) + '.h5')
         
         results=model_a.evaluate(test_a_one_hot,ytest_a)
         
@@ -105,9 +107,13 @@ for r in replicates:
                              'accuracy': results[1],
                              'replicate': r,
                              'fraction': f,
-                             'epoch': epochs},
+                             'epoch': epochs,
+                             'length': max_len,
+                             'resize': seq_resize,
+                             'batch': batch_size,
+                             'samples': sample_n},
                             ignore_index=True)
 
-df_expriment.to_csv(expr_path+basename+'_'+'shuffle')
+df_expriment.to_csv(expr_path+basename+'_'+'shuffle.csv',index=False)
 
     
