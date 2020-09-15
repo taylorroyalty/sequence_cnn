@@ -6,6 +6,16 @@ Created on Tue Sep  8 15:49:44 2020
 """
 
 #%%
+import os
+import pandas as pd
+
+from random import shuffle
+from keras.models import Model
+from sklearn.manifold import TSNE
+from numpy import zeros
+from keras.models import Sequential
+from keras.layers import LSTM, Masking, Dense,  Bidirectional, Dropout, MaxPooling1D, Conv1D, Activation
+from keras.optimizers import Adam#, Nadam
 
 def seq_one_hot(seqs,seq_type='aa',max_len=None,seq_resize=True):
 # =============================================================================
@@ -16,7 +26,7 @@ def seq_one_hot(seqs,seq_type='aa',max_len=None,seq_resize=True):
 # max_len -- specifies the length of sequences. Defualt is None. This takes the maximum length sequence as the max.
 # seq_resize -- This option resizes sequences using tensorflow.image resize  
 # =============================================================================
-    from numpy import zeros
+
     #create dictionary matching sequences positions to feature index for one-hot encoded matrix
     if seq_type == 'aa':
         seq_dict= {"A": 0,
@@ -112,8 +122,6 @@ def seq_one_hot(seqs,seq_type='aa',max_len=None,seq_resize=True):
 #%%
 #load data from directory        
 def load_seq_dataframe(dir_path):
-    import os
-    import pandas as pd
     
     seq_df=pd.DataFrame()
     for filename in os.listdir(dir_path):
@@ -124,9 +132,6 @@ def load_seq_dataframe(dir_path):
 #%%
 #model architecture for amino acids
 def original_blstm(num_classes, num_letters, sequence_length, embed_size=50):
-    from keras.models import Sequential
-    from keras.layers import LSTM, Masking, Dense,  Bidirectional, Dropout, MaxPooling1D, Conv1D, Activation
-    from keras.optimizers import Adam#, Nadam
     
     model = Sequential()
     model.add(Conv1D(input_shape=(sequence_length, num_letters), filters=100, kernel_size=26, padding="valid", activation="relu"))
@@ -142,9 +147,6 @@ def original_blstm(num_classes, num_letters, sequence_length, embed_size=50):
     return model
 #%%
 def dna_blstm(num_classes, num_letters, sequence_length, embed_size=256):
-    from keras.models import Sequential
-    from keras.layers import LSTM, Dense,  Bidirectional, Dropout, MaxPooling1D, Conv1D, Activation
-    from keras.optimizers import Adam#, Nadam
     
     model = Sequential()
     model.add(Conv1D(input_shape=(sequence_length, num_letters), filters=26, kernel_size=3, strides=3, padding="valid", activation="relu"))
@@ -161,9 +163,6 @@ def dna_blstm(num_classes, num_letters, sequence_length, embed_size=256):
 
 #%%
 def aa_blstm(num_classes, num_letters, sequence_length, embed_size=5000):
-    from keras.models import Sequential
-    from keras.layers import SpatialDropout1D,Embedding, LSTM, Masking, Dense,  Bidirectional, Dropout, MaxPooling1D, Conv1D, Activation
-    from keras.optimizers import Adam#, Nadam
     
     model = Sequential()
     # model.add(Conv1D(input_shape=(sequence_length, num_letters), filters=100, kernel_size=26, padding="valid", activation="relu"))
@@ -184,9 +183,6 @@ def aa_blstm(num_classes, num_letters, sequence_length, embed_size=5000):
 
 
 def tsne_non_trained_classes(model,data,write_path,layer,max_len,seq_type='aa',seq_resize=True):
-
-        from keras.models import Model
-        from sklearn.manifold import TSNE
         
         embed_model = Model(inputs=model.input, outputs=model.get_layer(layer).output)
         embed_model.summary()
@@ -200,3 +196,30 @@ def tsne_non_trained_classes(model,data,write_path,layer,max_len,seq_type='aa',s
         data['comp2']=xx[:,1]
         
         data.to_csv(write_path,sep='\t')
+
+def randomize_groups(df,x,f=1):
+# =============================================================================
+# shuffles dependent variables (columns) with respect to a dataframe
+# df -- a dataframe
+# x -- list containing columns which are not shuffled--i.e., independent columns (string)
+# f -- fraction of sample dependent columns to shuffle (float from 0 to 1) 
+# =============================================================================
+    
+    if f>1:
+        print("f ranges 0 to 1--f was set to 1")
+        f=1
+    elif f<0:
+        print("f ranges 0 to 1--f was set to 0")
+        f=0
+    
+    index_keep=df.sample(frac=f).index
+    df_tmp=df.drop(index_keep).reset_index(drop=True)
+    df=df.loc[index_keep]
+    
+    for col in df_tmp.columns:
+        if col in x: continue 
+        df_tmp[col]=df_tmp[col].sample(frac=1).reset_index(drop=True)
+        
+    return(df.append(df_tmp))
+        
+    
