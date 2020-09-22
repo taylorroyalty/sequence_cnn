@@ -21,8 +21,8 @@ tnse_write_path='data/tnse_results/test.tsv'
 emb_data_path='data/swiss_1_99.tsv'
 data_path='data/cluster_dataframes/'
 model_save_path='data/models/'
-anno_ex='_n10.csv'
-clust_ex='_n10.csv'
+anno_ex='rand_anno_n10.csv'
+clust_ex='rand_clust_n10.csv'
 new_model=True
 cluster_nontrain=False
 
@@ -35,6 +35,7 @@ epochs=100
 cnn_fun_path='scripts/python/tmr/'
 seq_type='aa'
 num_letters=26
+n_thres=26
 seq_resize=True 
 
 #%%
@@ -45,6 +46,7 @@ if new_model == True:
     num_classes=len(uniq_anno)
     annotation_ydata_df=pd.DataFrame({'ydata': range(num_classes),'annotation': uniq_anno})
     seq_df=pd.merge(seq_df,annotation_ydata_df,on='annotation')
+    seq_df=seq_df.groupby(['annotation','Cluster']).filter(lambda x: x['id'].count()>n_thres)
     # seq_cluster=seq_df.loc[seq_df['Cluster'] > -1]
     # seq_cluster_noise=seq_df.loc[seq_df['Cluster'] == -1]
     seq_cluster_a=seq_df
@@ -155,8 +157,8 @@ if new_model == True:
     test_a['actual']=ytest_a
     test_c['actual']=ytest_c
     
-    test_a.to_csv('data/experiment/anno_error'+anno_ex)
-    test_c.to_csv('data/experiment/cluster_error'+clust_ex)
+    test_a.to_csv('data/experiment/cluster_error/'+anno_ex)
+    test_c.to_csv('data/experiment/cluster_error/'+clust_ex)
     # model_a.evaluate(test_noise_one_hot,ytest_noise)
     # model_c.evaluate(test_noise_one_hot,ytest_noise)
     
