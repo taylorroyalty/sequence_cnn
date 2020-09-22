@@ -21,7 +21,10 @@ tnse_write_path='data/tnse_results/test.tsv'
 emb_data_path='data/swiss_1_99.tsv'
 data_path='data/cluster_dataframes/'
 model_save_path='data/models/'
+anno_ex='_n10.csv'
+clust_ex='_n10.csv'
 new_model=True
+cluster_nontrain=False
 
 #nn parameters
 max_len=1500
@@ -42,9 +45,12 @@ if new_model == True:
     num_classes=len(uniq_anno)
     annotation_ydata_df=pd.DataFrame({'ydata': range(num_classes),'annotation': uniq_anno})
     seq_df=pd.merge(seq_df,annotation_ydata_df,on='annotation')
-    seq_cluster=seq_df.loc[seq_df['Cluster'] > -1]
-    seq_cluster_noise=seq_df.loc[seq_df['Cluster'] == -1]
-    seq_cluster_a=seq_cluster
+    # seq_cluster=seq_df.loc[seq_df['Cluster'] > -1]
+    # seq_cluster_noise=seq_df.loc[seq_df['Cluster'] == -1]
+    seq_cluster_a=seq_df
+    seq_cluster=seq_df
+    
+    del seq_df
     
     #%%
     #generate training data for annotation/cluster datasets
@@ -96,10 +102,10 @@ if new_model == True:
                                   seq_type=seq_type,
                                   max_len=max_len,
                                   seq_resize=seq_resize)
-    test_noise_one_hot=cf.seq_one_hot(seq_cluster_noise['sequence'],
-                                  seq_type=seq_type,
-                                  max_len=max_len,
-                                  seq_resize=seq_resize)
+    # test_noise_one_hot=cf.seq_one_hot(seq_cluster_noise['sequence'],
+    #                               seq_type=seq_type,
+    #                               max_len=max_len,
+    #                               seq_resize=seq_resize)
     
     #%%
     ##generate y data for annotation/cluster datasets
@@ -111,7 +117,7 @@ if new_model == True:
     ytrain_c=to_categorical(np.array(train_c.ydata,dtype='uint8'),num_classes)
     yvalidation_c=to_categorical(np.array(validation_c.ydata,dtype='uint8'),num_classes)
     ytest_c=to_categorical(np.array(test_c.ydata,dtype='uint8'),num_classes)
-    ytest_noise=to_categorical(np.array(seq_cluster_noise.ydata,dtype='uint8'),num_classes)
+    # ytest_noise=to_categorical(np.array(seq_cluster_noise.ydata,dtype='uint8'),num_classes)
     
     
     # sequence_length = train_one_hot.shape[1]
@@ -143,14 +149,23 @@ if new_model == True:
     
     model_a.evaluate(test_a_one_hot,ytest_a)
     model_c.evaluate(test_c_one_hot,ytest_c)
-    model_a.evaluate(test_noise_one_hot,ytest_noise)
-    model_c.evaluate(test_noise_one_hot,ytest_noise)
+    
+    test_a['prediction']=model_a.predict(test_a_one_hot)
+    test_c['prediction']=model_c.predict(test_c_one_hot)
+    test_a['actual']=ytest_a
+    test_c['actual']=ytest_c
+    
+    test_a.to_csv('data/experiment/anno_error'+anno_ex)
+    test_c.to_csv('data/experiment/cluster_error'+clust_ex)
+    # model_a.evaluate(test_noise_one_hot,ytest_noise)
+    # model_c.evaluate(test_noise_one_hot,ytest_noise)
     
 else:
     from keras.models import load_model
     model_c=load_model('data/models/swiss100_clusters.h5')
 
-emb_data=pd.read_csv(emb_data_path,sep='\t').groupby("annotation").filter(lambda x: len(x)>9).reset_index(drop=True)
-cf.tsne_non_trained_classes(model_c,emb_data,tnse_write_path,layer,max_len)
+if cluster_nontrain==True:
+    emb_data=pd.read_csv(emb_data_path,sep='\t').groupby("annotation").filter(lambda x: len(x)>9).reset_index(drop=True)
+    cf.tsne_non_trained_classes(model_c,emb_data,tnse_write_path,layer,max_len)
 
     
