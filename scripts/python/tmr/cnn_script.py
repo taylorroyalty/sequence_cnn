@@ -13,7 +13,10 @@ from keras.utils import to_categorical
 import sys
 
 sys.path.insert(1,'scripts/python/tmr/')
+sys.path.insert(1,'scripts/python/libsampling/sampling/')
 import cnn_functions as cf
+from sampling.Sampler import *
+from sampling.SamplingMethods import *
 #%%
 #Inputs
 layer="lstm_1"
@@ -27,16 +30,16 @@ new_model=True
 cluster_nontrain=False
 
 #nn parameters
-max_len=1500
+max_len=50
 sample_n=10
 embed_size = 256
 batch_size=100
-epochs=100
+epochs=3
 cnn_fun_path='scripts/python/tmr/'
 seq_type='aa'
 num_letters=26
 n_thres=26
-seq_resize=True 
+seq_resize=False 
 
 #%%
 #generate datasets for fitting
@@ -112,13 +115,13 @@ if new_model == True:
     #%%
     ##generate y data for annotation/cluster datasets
     ##annotation
-    ytrain_a=to_categorical(np.array(train_a.ydata,dtype='uint8'),num_classes)
-    yvalidation_a=to_categorical(np.array(validation_a.ydata,dtype='uint8'),num_classes)
-    ytest_a=to_categorical(np.array(test_a.ydata,dtype='uint8'),num_classes)
+    ytrain_a=to_categorical(np.array(train_a.ydata,dtype='uint32'),num_classes)
+    yvalidation_a=to_categorical(np.array(validation_a.ydata,dtype='uint32'),num_classes)
+    ytest_a=to_categorical(np.array(test_a.ydata,dtype='uint32'),num_classes)
     #clusters
-    ytrain_c=to_categorical(np.array(train_c.ydata,dtype='uint8'),num_classes)
-    yvalidation_c=to_categorical(np.array(validation_c.ydata,dtype='uint8'),num_classes)
-    ytest_c=to_categorical(np.array(test_c.ydata,dtype='uint8'),num_classes)
+    ytrain_c=to_categorical(np.array(train_c.ydata,dtype='uint32'),num_classes)
+    yvalidation_c=to_categorical(np.array(validation_c.ydata,dtype='uint32'),num_classes)
+    ytest_c=to_categorical(np.array(test_c.ydata,dtype='uint32'),num_classes)
     # ytest_noise=to_categorical(np.array(seq_cluster_noise.ydata,dtype='uint8'),num_classes)
     
     
@@ -149,7 +152,11 @@ if new_model == True:
     model_a.save(model_save_path + 'swiss100_annotation_only.h5')
     model_c.save(model_save_path + 'swiss100_clusters.h5')
     
-    model_a.evaluate(test_a_one_hot,ytest_a)
+    tmp=model_a.evaluate(test_a_one_hot,ytest_a)
+    tmp2=model_a.predict_classes(test_a_one_hot)
+    i_max=[uniq_anno[np.where(tmp2[i,:]==tmp2[i,:].max())] == test_a.annotation.iloc[i] for i in range(tmp2.shape[0])]
+    sum(i_max)/len(i_max)    
+    
     model_c.evaluate(test_c_one_hot,ytest_c)
     
     test_a['prediction']=model_a.predict(test_a_one_hot)

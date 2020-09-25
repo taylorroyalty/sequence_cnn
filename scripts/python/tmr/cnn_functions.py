@@ -8,6 +8,7 @@ Created on Tue Sep  8 15:49:44 2020
 #%%
 import os
 import pandas as pd
+import sys
 
 from random import shuffle
 from keras.models import Model
@@ -16,6 +17,10 @@ from numpy import zeros
 from keras.models import Sequential
 from keras.layers import LSTM, Masking, Dense,  Bidirectional, Dropout, MaxPooling1D, Conv1D, Activation
 from keras.optimizers import Adam#, Nadam
+
+sys.path.insert(1,'sampling/')
+from sampling.Sampler import *
+from sampling.SamplingMethods import *
 
 def seq_one_hot(seqs,seq_type='aa',max_len=None,seq_resize=True):
 # =============================================================================
@@ -222,4 +227,73 @@ def randomize_groups(df,x,f=1):
         
     return(df.append(df_tmp))
         
+
+def sample_clusters(points,categories,sample_rate):
+    df_return=pd.DataFrame()
+    rsbs_args = { # This sampling method do not need sampling rate as input
+                 'sampling_rate': sample_rate
+    }
+    
+    #Random Sampling
+    sampling_method = RandomSampling
+    sampler = Sampler()
+    sampler.set_data(points,categories)
+    sampler.set_sampling_method(sampling_method, **rsbs_args)
+    sampled_point, sampled_category= sampler.get_samples()
+    indx=[]
+    for i in range(sampled_point.shape[0]):
+        for j in range(points.shape[0]):
+            if sum(sampled_point[i,:]==points[j,:]) == 2:
+                indx.append(j)
+    df_tmp=pd.DataFrame({'s_index': indx,
+                         'method': 'RS'})
+    df_return=df_return.append(df_tmp)
+    
+    #Blue Noise Sampling
+    sampling_method = BlueNoiseSampling
+    sampler = Sampler()
+    sampler.set_data(points,categories)
+    sampler.set_sampling_method(sampling_method, **rsbs_args)
+    sampled_point, sampled_category= sampler.get_samples()
+    indx=[]
+    for i in range(sampled_point.shape[0]):
+        for j in range(points.shape[0]):
+            if sum(sampled_point[i,:]==points[j,:]) == 2:
+                indx.append(j)
+    df_tmp=pd.DataFrame({'s_index': indx,
+                         'method': 'BNS'})
+    df_return=df_return.append(df_tmp)
+    
+    
+    #Density Bias Sampling
+    sampling_method = DensityBiasedSampling
+    sampler = Sampler()
+    sampler.set_data(points,categories)
+    sampler.set_sampling_method(sampling_method, **rsbs_args)
+    sampled_point, sampled_category= sampler.get_samples()
+    indx=[]
+    for i in range(sampled_point.shape[0]):
+        for j in range(points.shape[0]):
+            if sum(sampled_point[i,:]==points[j,:]) == 2:
+                indx.append(j)
+    df_tmp=pd.DataFrame({'s_index': indx,
+                         'method': 'DBS'})
+    df_return=df_return.append(df_tmp)
+    
+    #Outlier Biased Density Based Sampling
+    sampling_method = OutlierBiasedDensityBasedSampling
+    sampler = Sampler()
+    sampler.set_data(points,categories)
+    sampler.set_sampling_method(sampling_method, **rsbs_args)
+    sampled_point, sampled_category= sampler.get_samples()
+    indx=[]
+    for i in range(sampled_point.shape[0]):
+        for j in range(points.shape[0]):
+            if sum(sampled_point[i,:]==points[j,:]) == 2:
+                indx.append(j)
+    df_tmp=pd.DataFrame({'s_index': indx,
+                         'method': 'OBDBS'})
+    df_return=df_return.append(df_tmp)
+    
+    return df_return
     
