@@ -13,10 +13,8 @@ from keras.utils import to_categorical
 import sys
 
 sys.path.insert(1,'scripts/python/tmr/')
-sys.path.insert(1,'scripts/python/libsampling/sampling/')
 import cnn_functions as cf
-from sampling.Sampler import *
-from sampling.SamplingMethods import *
+
 #%%
 #Inputs
 layer="lstm_1"

@@ -16,7 +16,7 @@ import cnn_functions as cf
 #%%
 #Inputs
 data_path='data/cluster_dataframes/'
-all_save_path='data/models/all_data.csv'
+all_save_path='data/density_sample/all_data.csv'
 train_val_save_path='data/density_sample/train_val.csv'
 n_thres=26
 
@@ -34,6 +34,7 @@ annotation_ydata_df=pd.DataFrame({'ydata': range(num_classes),'annotation': uniq
 seq_df=pd.merge(seq_df,annotation_ydata_df,on='annotation')
 seq_df=seq_df.groupby(['annotation','Cluster']).filter(lambda x: x['id'].count()>n_thres)
 n_sample=round(min(seq_df.groupby(['annotation'])['id'].count())*max_sample_rate)*2
+seq_df=seq_df.reset_index(drop=True)
 seq_df['o_index']=seq_df.index
 
 df_fit=pd.DataFrame()
