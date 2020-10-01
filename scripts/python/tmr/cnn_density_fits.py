@@ -42,7 +42,7 @@ seq_resize=False
 #generate datasets for fitting
 # if new_model == True:
 # test_all=pd.read_csv(all_path)
-data=pd.read_csv(train_val_path)
+data=pd.read_csv(data_path)
 # seq_df=cf.load_seq_dataframe(data_path)
 uniq_anno=data.annotation.unique()
 num_classes=len(uniq_anno)
