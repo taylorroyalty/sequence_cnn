@@ -17,10 +17,11 @@ import cnn_functions as cf
 
 #%%
 #Inputs
-all_path='data/density_sample/all_data.csv'
-train_val_path='data/density_sample/train_val.csv'
+# all_path='data/density_sample/all_data.csv'
+data_path='data/density_sample/train_val.csv'
 model_save_path='data/models/'
-add_save='_20_base_fraction'
+n_sample='10'
+dr_type='TSNE'
 save_test='data/experiment/density_sampling/'
 
 
@@ -40,10 +41,10 @@ seq_resize=False
 #%%
 #generate datasets for fitting
 # if new_model == True:
-test_all=pd.read_csv(all_path)
-train_val=pd.read_csv(train_val_path)
+# test_all=pd.read_csv(all_path)
+data=pd.read_csv(train_val_path)
 # seq_df=cf.load_seq_dataframe(data_path)
-uniq_anno=test_all.annotation.unique()
+uniq_anno=data.annotation.unique()
 num_classes=len(uniq_anno)
 # annotation_ydata_df=pd.DataFrame({'ydata': range(num_classes),'annotation': uniq_anno})
 # seq_df=pd.merge(seq_df,annotation_ydata_df,on='annotation')
@@ -53,53 +54,56 @@ num_classes=len(uniq_anno)
 # seq_cluster_a=seq_df
 # seq_cluster=seq_df
 
-method_u=train_val.method.unique()
+method_u=data.method.unique()
+replicate_u=data.replicate.unique()
 
-for m in method_u:
-   train=train_val[train_val.method==m][train_val.dataset == "train"].reset_index(drop=True)
-   validation=train_val[train_val.method==m][train_val.dataset == "validation"].reset_index(drop=True)
-   index_drop=train.o_index
-   index_drop.append(validation.o_index)
-   test=test_all.drop(index_drop.tolist())
-   
-   
-   train_one_hot=cf.seq_one_hot(train['sequence'],
-                              seq_type=seq_type,
-                              max_len=max_len,
-                              seq_resize=seq_resize)
-   
-   validation_one_hot=cf.seq_one_hot(validation['sequence'],
-                              seq_type=seq_type,
-                              max_len=max_len,
-                              seq_resize=seq_resize)
-   
-   test_one_hot=cf.seq_one_hot(test['sequence'],
-                              seq_type=seq_type,
-                              max_len=max_len,
-                              seq_resize=seq_resize)
-   
-   ytrain=to_categorical(np.array(train.ydata,dtype='uint32'),num_classes)
-   yvalidation=to_categorical(np.array(validation.ydata,dtype='uint32'),num_classes)
-   ytest=to_categorical(np.array(test.ydata,dtype='uint32'),num_classes)
-   
-   model= cf.original_blstm(num_classes,
-                           num_letters,
-                           max_len,
-                           embed_size=embed_size)
-   
-   n_validation=validation_one_hot.shape[0]
-   model.fit(x=train_one_hot,y=ytrain,batch_size=batch_size,
-            validation_data=(validation_one_hot,yvalidation),
-            epochs=epochs)
-   
-   model.save(model_save_path + m + add_save + '.h5')
-
-   pred=model.predict(test_one_hot)
-   pred=np.argmax(pred,axis=1)
-   label=np.argmax(ytest,axis=1)
-   print(sum(pred==label)/len(pred))
-   test['prediction']=pred
-   test.to_csv(save_test+m+add_save+'.csv')
+for r in replicate_u:
+    for m in method_u:
+       train=data[data.method==m][data.dataset == "train"][data.replicate==r].reset_index(drop=True)
+       validation=data[data.method==m][data.dataset == "validation"][data.replicate==r].reset_index(drop=True)
+       test=data[data.method==m][data.dataset == "test"][data.replicate==r].reset_index(drop=True)
+       # index_drop=train.o_index
+       # index_drop.append(validation.o_index)
+       # test=test_all.drop(index_drop.tolist())
+       
+       
+       train_one_hot=cf.seq_one_hot(train['sequence'],
+                                  seq_type=seq_type,
+                                  max_len=max_len,
+                                  seq_resize=seq_resize)
+       
+       validation_one_hot=cf.seq_one_hot(validation['sequence'],
+                                  seq_type=seq_type,
+                                  max_len=max_len,
+                                  seq_resize=seq_resize)
+       
+       test_one_hot=cf.seq_one_hot(test['sequence'],
+                                  seq_type=seq_type,
+                                  max_len=max_len,
+                                  seq_resize=seq_resize)
+       
+       ytrain=to_categorical(np.array(train.ydata,dtype='uint32'),num_classes)
+       yvalidation=to_categorical(np.array(validation.ydata,dtype='uint32'),num_classes)
+       ytest=to_categorical(np.array(test.ydata,dtype='uint32'),num_classes)
+       
+       model= cf.original_blstm(num_classes,
+                               num_letters,
+                               max_len,
+                               embed_size=embed_size)
+       
+       n_validation=validation_one_hot.shape[0]
+       model.fit(x=train_one_hot,y=ytrain,batch_size=batch_size,
+                validation_data=(validation_one_hot,yvalidation),
+                epochs=epochs)
+       
+       model.save(model_save_path + '_' + m + '_' + r + '_' + n_sample + '_' + dr_type + '.h5')
+    
+       pred=model.predict(test_one_hot)
+       pred=np.argmax(pred,axis=1)
+       label=np.argmax(ytest,axis=1)
+       print(sum(pred==label)/len(pred))
+       test['prediction']=pred
+       test.to_csv(save_test + '_' + m + '_' + r + '_' + n_sample + '_' + dr_type + '.csv')
 
 
 

@@ -9,6 +9,7 @@ Created on Tue Sep  8 15:49:44 2020
 import os
 import pandas as pd
 import sys
+import numpy as np
 
 from random import shuffle
 from keras.models import Model
@@ -18,7 +19,7 @@ from keras.models import Sequential
 from keras.layers import LSTM, Masking, Dense,  Bidirectional, Dropout, MaxPooling1D, Conv1D, Activation
 from keras.optimizers import Adam#, Nadam
 
-sys.path.insert(1,'sampling/')
+sys.path.insert(1,'sampling/')  
 from sampling.Sampler import *
 from sampling.SamplingMethods import *
 
@@ -148,7 +149,7 @@ def original_blstm(num_classes, num_letters, sequence_length, embed_size=50):
     model.add(LSTM(embed_size, activation="tanh"))
     model.add(Dense(num_classes, activation=None, name="AV"))
     model.add(Activation("softmax"))
-    model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=0.001), metrics=['accuracy'])
+    model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=0.001), metrics=['categorical_accuracy'])
     return model
 #%%
 def dna_blstm(num_classes, num_letters, sequence_length, embed_size=256):
@@ -163,7 +164,7 @@ def dna_blstm(num_classes, num_letters, sequence_length, embed_size=256):
     model.add(LSTM(embed_size, activation="tanh"))
     model.add(Dense(num_classes, activation=None, name="AV"))
     model.add(Activation("softmax"))
-    model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=0.001), metrics=['accuracy'])
+    model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=0.001), metrics=['categorical_accuracy'])
     return model
 
 #%%
@@ -181,7 +182,7 @@ def aa_blstm(num_classes, num_letters, sequence_length, embed_size=5000):
     model.add(LSTM(embed_size, activation="tanh"))
     model.add(Dense(num_classes, activation=None, name="AV"))
     model.add(Activation("softmax"))
-    model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=0.001), metrics=['accuracy'])
+    model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=0.001), metrics=['categorical_accuracy'])
     return model
 
 #%%
@@ -229,15 +230,17 @@ def randomize_groups(df,x,f=1):
         
 
 def sample_clusters(points,categories,sample_rate):
+    points=(points-np.min(points,axis=0))/np.ptp(points)
     df_return=pd.DataFrame()
     rsbs_args = { # This sampling method do not need sampling rate as input
                  'sampling_rate': sample_rate
     }
+    sampler = Sampler()
+    sampler.set_data(points,categories)
     
     #Random Sampling
     sampling_method = RandomSampling
-    sampler = Sampler()
-    sampler.set_data(points,categories)
+    
     sampler.set_sampling_method(sampling_method, **rsbs_args)
     sampled_point, sampled_category= sampler.get_samples()
     indx=[]
@@ -251,8 +254,7 @@ def sample_clusters(points,categories,sample_rate):
     
     #Blue Noise Sampling
     sampling_method = BlueNoiseSampling
-    sampler = Sampler()
-    sampler.set_data(points,categories)
+
     sampler.set_sampling_method(sampling_method, **rsbs_args)
     sampled_point, sampled_category= sampler.get_samples()
     indx=[]
@@ -267,8 +269,7 @@ def sample_clusters(points,categories,sample_rate):
     
     #Density Bias Sampling
     sampling_method = DensityBiasedSampling
-    sampler = Sampler()
-    sampler.set_data(points,categories)
+
     sampler.set_sampling_method(sampling_method, **rsbs_args)
     sampled_point, sampled_category= sampler.get_samples()
     indx=[]
@@ -282,8 +283,7 @@ def sample_clusters(points,categories,sample_rate):
     
     #Outlier Biased Density Based Sampling
     sampling_method = OutlierBiasedDensityBasedSampling
-    sampler = Sampler()
-    sampler.set_data(points,categories)
+
     sampler.set_sampling_method(sampling_method, **rsbs_args)
     sampled_point, sampled_category= sampler.get_samples()
     indx=[]
@@ -293,6 +293,20 @@ def sample_clusters(points,categories,sample_rate):
                 indx.append(j)
     df_tmp=pd.DataFrame({'s_index': indx,
                          'method': 'OBDBS'})
+    df_return=df_return.append(df_tmp)
+    
+    #Z Order sampling
+    sampling_method = ZOrderSampling
+
+    sampler.set_sampling_method(sampling_method, **rsbs_args)
+    sampled_point, sampled_category= sampler.get_samples()
+    indx=[]
+    for i in range(sampled_point.shape[0]):
+        for j in range(points.shape[0]):
+            if sum(sampled_point[i,:]==points[j,:]) == 2:
+                indx.append(j)
+    df_tmp=pd.DataFrame({'s_index': indx,
+                         'method': 'ZOS'})
     df_return=df_return.append(df_tmp)
     
     return df_return
