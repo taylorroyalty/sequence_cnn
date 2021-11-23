@@ -10,20 +10,25 @@ import os
 import pandas as pd
 import sys
 import numpy as np
+import random
 
-from random import shuffle
+
 from keras.models import Model
+from keras.metrics import Precision
 from sklearn.manifold import TSNE
-from numpy import zeros
+from sklearn.neighbors import KernelDensity
+from sklearn.model_selection import GridSearchCV
+
+from tensorflow.image import resize
 from keras.models import Sequential
 from keras.layers import LSTM, Masking, Dense,  Bidirectional, Dropout, MaxPooling1D, Conv1D, Activation
 from keras.optimizers import Adam#, Nadam
 
-sys.path.insert(1,'sampling/')  
-from sampling.Sampler import *
-from sampling.SamplingMethods import *
+# sys.path.insert(1,'sampling/')  
+# from sampling.Sampler import *
+# from sampling.SamplingMethods import *
 
-def seq_one_hot(seqs,seq_type='aa',max_len=None,seq_resize=True):
+def seq_one_hot(seqs,seq_type='aa',max_len=None,seq_resize=True,skip_first=0):
 # =============================================================================
 # one-hot encodes sequences for use in nn modeling.
 # seqs -- a list where each element is a biological sequence as a string 
@@ -93,20 +98,20 @@ def seq_one_hot(seqs,seq_type='aa',max_len=None,seq_resize=True):
     if max_len == None:
         n=[len(seq) for seq in seqs]
         max_len = max(n)
-    
+
     #pre-define numpy matrix based on length and number of sequences
-    one_hot_matrix=zeros(shape=(len(seqs),max_len,n_letter),dtype='float')    
+    one_hot_matrix=np.zeros(shape=(len(seqs),max_len,n_letter),dtype='float')    
     
     #indexing matching bases/aa's to dictionary and populating one_hot_matrix
     #feature index is retrieved with dictionary
     if seq_resize == True:
-        from tensorflow.image import resize
-        
+        print('here')
         i=0
         for seq in seqs: #loop through each sequence in list seqs
             j=0
-            tmp_vector=zeros(shape=(1,len(seq),n_letter,1)) #define 4-D tensor with 1 sample and 1 channel
+            tmp_vector=np.zeros(shape=(1,len(seq),n_letter,1)) #define 4-D tensor with 1 sample and 1 channel
             for letter in seq: #loop through each base/aa in sequence
+                if (skip_first) == 1 & (j==0): continue
                 indx=seq_dict[letter] #match letter to dictionary
                 tmp_vector[0,j,indx,0]=1 
                 j+=1
@@ -117,6 +122,7 @@ def seq_one_hot(seqs,seq_type='aa',max_len=None,seq_resize=True):
         for seq in seqs:
             j=0
             for letter in seq:
+                if (skip_first == 1) & (j == 0): continue
                 indx=seq_dict[letter] #match letter to dictionary
                 one_hot_matrix[i,j,indx]=1
                 j+=1
@@ -138,7 +144,6 @@ def load_seq_dataframe(dir_path):
 #%%
 #model architecture for amino acids
 def original_blstm(num_classes, num_letters, sequence_length, embed_size=50):
-    
     model = Sequential()
     model.add(Conv1D(input_shape=(sequence_length, num_letters), filters=100, kernel_size=26, padding="valid", activation="relu"))
     model.add(MaxPooling1D(pool_size=13, strides=13))
@@ -149,9 +154,24 @@ def original_blstm(num_classes, num_letters, sequence_length, embed_size=50):
     model.add(LSTM(embed_size, activation="tanh"))
     model.add(Dense(num_classes, activation=None, name="AV"))
     model.add(Activation("softmax"))
-    model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=0.001), metrics=['categorical_accuracy'])
+    model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=0.001), metrics=['categorical_accuracy',Precision()])
     return model
 #%%
+
+def original_blstm_binary(num_letters, sequence_length, embed_size=50):
+    model = Sequential()
+    model.add(Conv1D(input_shape=(sequence_length, num_letters), filters=100, kernel_size=26, padding="valid", activation="relu"))
+    model.add(MaxPooling1D(pool_size=13, strides=13))
+    model.add(Masking(mask_value=0))
+    model.add(Dropout(0.2))
+    model.add(Bidirectional(LSTM(320, activation="tanh", return_sequences=True)))
+    model.add(Dropout(0.5))
+    model.add(LSTM(embed_size, activation="tanh"))
+    model.add(Dense(2, activation=None,name='AV'))
+    model.add(Activation("softmax"))
+    model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=0.001), metrics=['accuracy'])
+    return model
+
 def dna_blstm(num_classes, num_letters, sequence_length, embed_size=256):
     
     model = Sequential()
@@ -182,7 +202,7 @@ def aa_blstm(num_classes, num_letters, sequence_length, embed_size=5000):
     model.add(LSTM(embed_size, activation="tanh"))
     model.add(Dense(num_classes, activation=None, name="AV"))
     model.add(Activation("softmax"))
-    model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=0.001), metrics=['categorical_accuracy'])
+    model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=0.001), metrics=['categorical_accuracy', Precision()])
     return model
 
 #%%
@@ -229,85 +249,143 @@ def randomize_groups(df,x,f=1):
     return(df.append(df_tmp))
         
 
-def sample_clusters(points,categories,sample_rate):
-    points=(points-np.min(points,axis=0))/np.ptp(points)
-    df_return=pd.DataFrame()
-    rsbs_args = { # This sampling method do not need sampling rate as input
-                 'sampling_rate': sample_rate
-    }
-    sampler = Sampler()
-    sampler.set_data(points,categories)
+# def sample_clusters(points,categories,sample_rate):
+#     points=(points-np.min(points,axis=0))/np.ptp(points)
     
-    #Random Sampling
-    sampling_method = RandomSampling
+#     df_return=pd.DataFrame()
+#     rsbs_args = { # This sampling method do not need sampling rate as input
+#                  'sampling_rate': sample_rate
+#     }
+#     sampler = Sampler()
+#     sampler.set_data(points,categories)
     
-    sampler.set_sampling_method(sampling_method, **rsbs_args)
-    sampled_point, sampled_category= sampler.get_samples()
-    indx=[]
-    for i in range(sampled_point.shape[0]):
-        for j in range(points.shape[0]):
-            if sum(sampled_point[i,:]==points[j,:]) == 2:
-                indx.append(j)
-    df_tmp=pd.DataFrame({'s_index': indx,
-                         'method': 'RS'})
-    df_return=df_return.append(df_tmp)
+#     #Random Sampling
+#     sampling_method = RandomSampling
     
-    #Blue Noise Sampling
-    sampling_method = BlueNoiseSampling
+#     sampler.set_sampling_method(sampling_method, **rsbs_args)
+#     sampled_point, sampled_category= sampler.get_samples()
 
-    sampler.set_sampling_method(sampling_method, **rsbs_args)
-    sampled_point, sampled_category= sampler.get_samples()
-    indx=[]
-    for i in range(sampled_point.shape[0]):
-        for j in range(points.shape[0]):
-            if sum(sampled_point[i,:]==points[j,:]) == 2:
-                indx.append(j)
-    df_tmp=pd.DataFrame({'s_index': indx,
-                         'method': 'BNS'})
-    df_return=df_return.append(df_tmp)
+#     indx=[]
+#     for i in range(sampled_point.shape[0]):
+#         for j in range(points.shape[0]):
+#             if sum(sampled_point[i,:]==points[j,:]) == 2:
+#                 if j in indx:
+#                     continue
+#                 indx.append(j)
+#                 break
+                
+#     df_tmp=pd.DataFrame({'s_index': indx,
+#                          'method': 'RS'})
+#     df_return=df_return.append(df_tmp)
     
-    
-    #Density Bias Sampling
-    sampling_method = DensityBiasedSampling
+#     #Blue Noise Sampling
+#     sampling_method = BlueNoiseSampling
 
-    sampler.set_sampling_method(sampling_method, **rsbs_args)
-    sampled_point, sampled_category= sampler.get_samples()
-    indx=[]
-    for i in range(sampled_point.shape[0]):
-        for j in range(points.shape[0]):
-            if sum(sampled_point[i,:]==points[j,:]) == 2:
-                indx.append(j)
-    df_tmp=pd.DataFrame({'s_index': indx,
-                         'method': 'DBS'})
-    df_return=df_return.append(df_tmp)
+#     sampler.set_sampling_method(sampling_method, **rsbs_args)
+#     sampled_point, sampled_category= sampler.get_samples()
+#     indx=[]
+#     for i in range(sampled_point.shape[0]):
+#         for j in range(points.shape[0]):
+#             if sum(sampled_point[i,:]==points[j,:]) == 2:
+#                 if j in indx:
+#                     continue
+#                 indx.append(j)
+#                 break
+            
+#     df_tmp=pd.DataFrame({'s_index': indx,
+#                          'method': 'BNS'})
+#     df_return=df_return.append(df_tmp)
     
-    #Outlier Biased Density Based Sampling
-    sampling_method = OutlierBiasedDensityBasedSampling
+    
+#     #Density Bias Sampling
+#     sampling_method = DensityBiasedSampling
 
-    sampler.set_sampling_method(sampling_method, **rsbs_args)
-    sampled_point, sampled_category= sampler.get_samples()
-    indx=[]
-    for i in range(sampled_point.shape[0]):
-        for j in range(points.shape[0]):
-            if sum(sampled_point[i,:]==points[j,:]) == 2:
-                indx.append(j)
-    df_tmp=pd.DataFrame({'s_index': indx,
-                         'method': 'OBDBS'})
-    df_return=df_return.append(df_tmp)
+#     sampler.set_sampling_method(sampling_method, **rsbs_args)
+#     sampled_point, sampled_category= sampler.get_samples()
+#     indx=[]
+#     skip=[]
+#     for i in range(sampled_point.shape[0]):
+#         for j in range(points.shape[0]):
+#             if sum(sampled_point[i,:]==points[j,:]) == 2:
+#                 if j in indx:
+#                     continue
+#                 indx.append(j)
+#                 break
+            
+#     df_tmp=pd.DataFrame({'s_index': indx,
+#                          'method': 'DBS'})
+#     df_return=df_return.append(df_tmp)
     
-    #Z Order sampling
-    sampling_method = ZOrderSampling
+#     #Outlier Biased Density Based Sampling
+#     sampling_method = OutlierBiasedDensityBasedSampling
 
-    sampler.set_sampling_method(sampling_method, **rsbs_args)
-    sampled_point, sampled_category= sampler.get_samples()
-    indx=[]
-    for i in range(sampled_point.shape[0]):
-        for j in range(points.shape[0]):
-            if sum(sampled_point[i,:]==points[j,:]) == 2:
-                indx.append(j)
-    df_tmp=pd.DataFrame({'s_index': indx,
-                         'method': 'ZOS'})
-    df_return=df_return.append(df_tmp)
+#     sampler.set_sampling_method(sampling_method, **rsbs_args)
+#     sampled_point, sampled_category= sampler.get_samples()
+#     indx=[]
+#     for i in range(sampled_point.shape[0]):
+#         for j in range(points.shape[0]):
+#             if sum(sampled_point[i,:]==points[j,:]) == 2:
+#                 if j in indx:
+#                     continue
+#                 indx.append(j)
+#                 break
+            
+#     df_tmp=pd.DataFrame({'s_index': indx,
+#                          'method': 'OBDBS'})
+#     df_return=df_return.append(df_tmp)
     
+#     #Z Order sampling
+#     sampling_method = ZOrderSampling
+
+#     sampler.set_sampling_method(sampling_method, **rsbs_args)
+#     sampled_point, sampled_category= sampler.get_samples()
+#     indx=[]
+#     for i in range(sampled_point.shape[0]):
+#         for j in range(points.shape[0]):
+#             if sum(sampled_point[i,:]==points[j,:]) == 2:
+#                 if j in indx:
+#                     continue
+#                 indx.append(j)
+#                 break
+            
+#     df_tmp=pd.DataFrame({'s_index': indx,
+#                          'method': 'ZOS'})
+#     df_return=df_return.append(df_tmp)
+    
+#     return df_return
+
+def sample_clusters(points,categories,sampling_rate):
+    
+    def KDE_sample(X,sampling_rate,alpha=-1,bw=0.1,kernel='gaussian'):
+        kde=KernelDensity(kernel=kernel,bandwidth=bw).fit(X)
+        rho=kde.score_samples(X)
+        rho=np.exp(rho)**alpha
+        prob=rho/sum(rho)
+        prob=prob/sum(prob) #deals with precision error 
+        
+        n=X.shape[0]
+        m=int(n*sampling_rate)
+        sampled_index=np.random.choice(n,m,replace=False,p=prob)
+        
+        return sampled_index
+
+    df_return=pd.DataFrame()    
+    alpha=np.round(np.linspace(-10,10,num=11),decimals=2)
+    
+    params = {'bandwidth': np.logspace(-1, 1, 20)}
+    grid = GridSearchCV(KernelDensity(kernel='gaussian'), params)
+    bw_pred=grid.fit(points)
+    bw=bw_pred.best_estimator_.bandwidth
+    
+    df_list=[pd.DataFrame({'s_index': KDE_sample(points,sampling_rate,alpha=a,bw=bw), 'method': a}) for a in alpha]
+    
+    for l in df_list:
+        df_return=df_return.append(l)
+        
     return df_return
+    
+    
+    
+    
+    
     

@@ -18,30 +18,30 @@ import cnn_functions as cf
 #%%
 #Inputs
 # all_path='data/density_sample/all_data.csv'
-data_path='data/density_sample/train_val.csv'
+data_path='data/density_sample/train_val_TSNE.csv'
 model_save_path='data/models/'
 dr_type='TSNE'
-save_test='data/experiment/density_sampling/TSNE_5_37'
+save_test='data/experiment/density_sampling/TSNE_8_40'
 
 
 
 #nn parameters
 max_len=300
-sample_n=10
 embed_size = 256
-batch_size=100
-epochs=3
+batch_size=32
+epochs=50
 cnn_fun_path='scripts/python/tmr/'
 seq_type='aa'
 num_letters=26
-n_thres=26
 seq_resize=False 
 
 #%%
 #generate datasets for fitting
 # if new_model == True:
 # test_all=pd.read_csv(all_path)
+print('starting to load data')
 data=pd.read_csv(data_path)
+print('data loaded')
 # seq_df=cf.load_seq_dataframe(data_path)
 uniq_anno=data.annotation.unique()
 num_classes=len(uniq_anno)
@@ -61,6 +61,9 @@ df_results=pd.DataFrame()
 for s in sample_u:
     for r in replicate_u:
         for m in method_u:
+            print(s,r,m)
+            if m == "all":
+                continue
             train=data.loc[(data['method']==m) & 
                              (data['dataset']=="train") & 
                              (data['replicate']==r) & 
@@ -69,8 +72,7 @@ for s in sample_u:
                                  (data['dataset']=="validation") & 
                                  (data['replicate']==r) & 
                                  (data['n_sample']==s)].reset_index(drop=True)
-            test=data.loc[(data['method']==m) & 
-                           (data['dataset']=="test") & 
+            test=data.loc[(data['dataset']=="test") & 
                            (data['replicate']==r) & 
                            (data['n_sample']==s)].reset_index(drop=True)
             # index_drop=train.o_index
@@ -107,7 +109,7 @@ for s in sample_u:
                      validation_data=(validation_one_hot,yvalidation),
                      epochs=epochs)
             
-            model.save(model_save_path + '_' + m + '_' + r + '_' + s + '_' + dr_type + '.h5')
+            model.save(model_save_path + '_' + m + '_' + str(int(r)) + '_' + str(int(s)) + '_' + dr_type + '.h5')
              
             pred=model.predict(test_one_hot)
             pred=np.argmax(pred,axis=1)
